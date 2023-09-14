@@ -1,3 +1,5 @@
+import gltfPrimitive from '../GLTFPrimitive';
+
 export interface IGLTFMeshInitialValues {}
 
 export interface gltfMesh {
@@ -7,9 +9,8 @@ export interface gltfMesh {
   getWeights(): number[];
   setWeights(weights: number[]): void;
 
-  //TODO: Use primitive type
-  getPrimitives(): number[];
-  setPrimitives(primitives: number): void;
+  getPrimitives(): gltfPrimitive[];
+  setPrimitives(primitives: gltfPrimitive[]): void;
 }
 
 export function extend(publicAPI: object, model: object, initialValues?: IGLTFMeshInitialValues): void;
