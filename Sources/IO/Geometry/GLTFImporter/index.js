@@ -1,4 +1,15 @@
-import macro from 'vtk.js/Sources/macros';
+import vtkActor from '../../../Rendering/Core/Actor';
+import vtkMapper from '../../../Rendering/Core/Mapper';
+import * as macro from '../../../macros';
+import gltfMesh from './Mesh';
+
+function importActors() {
+  const mesh = gltfMesh.newInstance();
+  mesh.getPrimitives().forEach((primitive) => {
+    const actor = vtkActor.newInstance();
+    const mapper = vtkMapper.newInstance();
+  });
+}
 
 function vtkGLTFImporter(publicAPI, model) {
   //
