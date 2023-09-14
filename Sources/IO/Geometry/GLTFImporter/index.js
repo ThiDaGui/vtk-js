@@ -1,15 +1,19 @@
 import vtkActor from '../../../Rendering/Core/Actor';
 import vtkMapper from '../../../Rendering/Core/Mapper';
 import * as macro from '../../../macros';
-import gltfMesh from './Mesh';
+import gltfMesh from './GLTFMesh';
 
 function importActors(renderer) {
   const mesh = gltfMesh.newInstance();
   mesh.getPrimitives().forEach((primitive) => {
+    // const pointData = primitive.getGeometry().getPointData();
+
     const actor = vtkActor.newInstance();
     const mapper = vtkMapper.newInstance();
     mapper.setColorModeToDirectScalars();
     mapper.setInterpolateScalarsBeforeMapping(true);
+
+    mapper.setInputData(primitive.getGeometry());
 
     actor.setMapper(mapper);
 
