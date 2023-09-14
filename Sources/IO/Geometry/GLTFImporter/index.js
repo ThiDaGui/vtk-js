@@ -1,8 +1,12 @@
-import macro from '@kitware/vtk.js/macros';
+import macro from 'vtk.js/Sources/macros';
 
 function vtkGLTFImporter(publicAPI, model) {
   //
   model.classHierarchy.push('vtkGLTFImporter');
+
+  publicAPI.loadData = () => publicAPI.parse();
+
+  publicAPI.parse = (content) => {};
 }
 
 const DEFAULT_VALUES = {};
@@ -19,7 +23,4 @@ export function extend(publicAPI, model, initialValues = {}) {
 
 export const newInstance = macro.newInstance(extend, 'vtkGLTFImporter');
 
-export default {
-  extend,
-  newInstance,
-};
+export default { extend, newInstance };

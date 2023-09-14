@@ -5,6 +5,8 @@ interface IGLTFImporterOptions {
 	binary?: boolean;
 }
 
+export interface IGLTFImporterInitialValues {}
+
 type vtkGLTFImporterBase = vtkObject & Omit<vtkAlgorithm,
 	| 'getInputData'
 	| 'setInputData'
@@ -25,5 +27,19 @@ export interface vtkGLTFImporter extends vtkGLTFImporterBase {
 
   getRenderer(): vtkRenderer;
 
-  setRenderer(renderer: vtkRenderer);
+  setRenderer(renderer: vtkRenderer): Promise<string | any>;
+
+  loadData(options?: IGLTFImporterOptions): Promise<any>;
+
+  parse(content: string): void;
 }
+
+export function extend(publicAPI: object, model: object, initialValues?: IGLTFImporterInitialValues): void;
+
+export function newInstance(initialValues?: IGLTFImporterInitialValues): vtkGLTFImporter;
+
+export declare const vtkGLTFImporter: {
+  newInstance: typeof newInstance;
+  extend: typeof extend;
+}
+export default vtkGLTFImporter;
