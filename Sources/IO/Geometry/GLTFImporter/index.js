@@ -1,4 +1,5 @@
 import macro from '@kitware/vtk.js/macros';
+import Constants from 'vtk.js/Sources/IO/Geometry/GLTFImporter/Constants';
 
 function vtkGLTFImporter(publicAPI, model) {
   //
@@ -22,4 +23,5 @@ export const newInstance = macro.newInstance(extend, 'vtkGLTFImporter');
 export default {
   extend,
   newInstance,
+  Constants,
 };
