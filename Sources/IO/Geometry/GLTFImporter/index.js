@@ -40,29 +40,40 @@ function vtkGLTFImporter(publicAPI, model) {
     });
   }
 
+  function parseGLTF(content) {
+    const GLTFMetaData = JSON.parse(content);
+
+    if (!model.GLTFMetaData || model.GLTFMetaData !== GLTFMetaData) {
+      model.GLTFMetaData = GLTFMetaData;
+    }
+  }
+
   publicAPI.setUrl = (url) => {
     model.url = url;
 
     // Remove the file in the URL
     const path = url.split('/');
-    path.pop();
-    model.baseURL = path.join('/');
+    const fileName = path.pop().split('.');
 
-    return publicAPI.loadData();
+    model.baseURL = path.join('/');
+    model.extension = fileName.pop();
+    model.baseName = fileName.join('.');
+
+    // To be moved to another function for initialisation
+    const promise = fetchData(model.url);
+    switch (model.extension) {
+      case 'gltf':
+        promise.then(parseGLTF);
+        return promise;
+      default:
+        return Promise.reject(new Error('Unsuported file type.'));
+    }
   };
 
   publicAPI.loadData = (option = {}) => {
     const promise = fetchData(model.url, option);
     promise.then(publicAPI.parse);
     return promise;
-  };
-
-  publicAPI.parse = (content) => {
-    const GLTFdata = JSON.parse(content);
-
-    if (!model.GLTFdata || model.GLTFdata !== GLTFdata) {
-      model.GLTFdata = GLTFdata;
-    }
   };
 }
 
