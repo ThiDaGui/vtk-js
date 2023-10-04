@@ -65,9 +65,21 @@ function vtkGLTFImporter(publicAPI, model) {
     }
   }
 
+  function extractPrimitiveAccessorData(primitive, buffersDataView) {
+    if (primitive.indices >= 0) {
+      const accessor = model.GLTFMetaData.accessors[primitive.indices];
+      const bufferView = model.GLTFMetaData.bufferViews[accessor.bufferView];
+      if (accessor.type !== Constants.AccessorTypes.SCALAR) {
+        throw new Error(
+          "Invalid accessor.type value for primitive connectivity loading. Expected 'SCALAR'"
+        );
+      }
+    }
+  }
+
   async function loadData() {
     model.GLTFData = [];
-    const dataViewBuffers = [];
+    const buffersDataView = [];
 
     model.GLTFMetaData.buffers.forEach(async (buffer) => {
       let uri = buffer.uri;
@@ -80,7 +92,7 @@ function vtkGLTFImporter(publicAPI, model) {
       }
 
       const bufferContent = await fetchData(uri, { binary: true });
-      dataViewBuffers.push(new DataView(bufferContent, length));
+      buffersDataView.push(new DataView(bufferContent, length));
     });
 
     // Primitives
