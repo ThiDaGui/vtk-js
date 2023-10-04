@@ -34,6 +34,12 @@ function vtkGLTFImporter(publicAPI, model) {
         ? option.progressCallback
         : model.progressCallback;
 
+    if (option.binary) {
+      return model.dataAccessHelper.fetchBinary(publicAPI, url, {
+        compression,
+        progressCallback,
+      });
+    }
     return model.dataAccessHelper.fetchText(publicAPI, url, {
       compression,
       progressCallback,
@@ -48,7 +54,39 @@ function vtkGLTFImporter(publicAPI, model) {
     }
   }
 
-  publicAPI.setUrl = (url) => {
+  function loadMetaData() {
+    // To be moved to another function for initialisation
+    const promise = fetchData(model.url);
+    switch (model.extension) {
+      case 'gltf':
+        return promise.then((content) => parseGLTF(content));
+      default:
+        return Promise.reject(new Error('Unsuported file type.'));
+    }
+  }
+
+  async function loadData() {
+    model.GLTFData = [];
+    const dataViewBuffers = [];
+
+    model.GLTFMetaData.buffers.forEach(async (buffer) => {
+      let uri = buffer.uri;
+      const length = buffer.byteLength;
+
+      // TODO: case when the uri is not a path (ie a base64 or other)
+      if (uri[0] !== '/') {
+        // relative path
+        uri = String.concat(model.baseURL, buffer);
+      }
+
+      const bufferContent = await fetchData(uri, { binary: true });
+      dataViewBuffers.push(new DataView(bufferContent, length));
+    });
+
+    // Primitives
+  }
+
+  publicAPI.setUrl = async (url) => {
     model.url = url;
 
     // Remove the file in the URL
@@ -59,21 +97,9 @@ function vtkGLTFImporter(publicAPI, model) {
     model.extension = fileName.pop();
     model.baseName = fileName.join('.');
 
-    // To be moved to another function for initialisation
-    const promise = fetchData(model.url);
-    switch (model.extension) {
-      case 'gltf':
-        promise.then(parseGLTF);
-        return promise;
-      default:
-        return Promise.reject(new Error('Unsuported file type.'));
-    }
-  };
+    await loadMetaData();
 
-  publicAPI.loadData = (option = {}) => {
-    const promise = fetchData(model.url, option);
-    promise.then(publicAPI.parse);
-    return promise;
+    await loadData();
   };
 }
 
