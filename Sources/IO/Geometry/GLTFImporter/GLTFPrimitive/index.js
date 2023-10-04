@@ -10,7 +10,17 @@ const DEFAULT_VALUES = {};
 export function extend(publicAPI, model, initialValues = {}) {
   Object.assign(model, DEFAULT_VALUES, initialValues);
 
-  macro.setGet(publicAPI, model, ['geometry']);
+  macro.setGet(publicAPI, model, [
+    'attributeIndices',
+    'indicesId',
+    'attributeValues',
+    'geometry',
+    'target',
+    'indices',
+    'material',
+    'mode',
+    'cellSize',
+  ]);
 
   gltfPrimitive(publicAPI, model);
 }
