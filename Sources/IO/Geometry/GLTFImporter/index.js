@@ -13,29 +13,12 @@ function vtkGLTFImporter(publicAPI, model) {
   //
   model.classHierarchy.push('vtkGLTFImporter');
 
-  if (!model.dataAccessHelper) {
-    model.dataAccessHelper = DataAccessHelper.get('http');
-  }
-
-  // To support destructuring
-  if (!model.compression) {
-    model.compression = null;
-  }
-
-  if (!model.progressCallback) {
-    model.progressCallback = null;
-  }
-
   function fetchData(url, option = {}) {
-    const compression =
-      option.compression !== undefined ? option.compression : model.compression;
-    const progressCallback =
-      option.progressCallback !== undefined
-        ? option.progressCallback
-        : model.progressCallback;
+    const compression = option.compression ?? model.compression;
+    const progressCallback = option.progressCallback && model.progressCallback;
 
     if (option.binary) {
-      return model.dataAccessHelper.fetchBinary(publicAPI, url, {
+      return model.dataAccessHelper.fetchBinary(url, {
         compression,
         progressCallback,
       });
@@ -65,7 +48,8 @@ function vtkGLTFImporter(publicAPI, model) {
     }
   }
 
-  function extractPrimitiveAccessorData(primitive, buffersDataView) {
+  /*
+   function extractPrimitiveAccessorData(primitive, buffersDataView) {
     if (primitive.indices >= 0) {
       const accessor = model.GLTFMetaData.accessors[primitive.indices];
       const bufferView = model.GLTFMetaData.bufferViews[accessor.bufferView];
@@ -76,6 +60,7 @@ function vtkGLTFImporter(publicAPI, model) {
       }
     }
   }
+  */
 
   async function loadData() {
     model.GLTFData = [];
@@ -83,16 +68,17 @@ function vtkGLTFImporter(publicAPI, model) {
 
     model.GLTFMetaData.buffers.forEach(async (buffer) => {
       let uri = buffer.uri;
-      const length = buffer.byteLength;
+      // const length = buffer.byteLength;
 
       // TODO: case when the uri is not a path (ie a base64 or other)
       if (uri[0] !== '/') {
         // relative path
-        uri = String.concat(model.baseURL, buffer);
+        uri = model.baseURL.concat('/', uri);
       }
 
       const bufferContent = await fetchData(uri, { binary: true });
-      buffersDataView.push(new DataView(bufferContent, length));
+      const dataview = new DataView(bufferContent);
+      buffersDataView.push(dataview);
     });
 
     // Primitives
@@ -119,7 +105,11 @@ function vtkGLTFImporter(publicAPI, model) {
 // Object factory
 // ----------------------------------------------------------------------------
 
-const DEFAULT_VALUES = {};
+const DEFAULT_VALUES = {
+  dataAccessHelper: DataAccessHelper.get('http'),
+  compression: null,
+  progressCallback: null,
+};
 
 // ----------------------------------------------------------------------------
 
