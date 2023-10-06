@@ -5,24 +5,59 @@ import gltfMesh from './GLTFMesh';
 import vtkPolyData from '../../../Common/DataModel/PolyData';
 import vtkPoints from '../../../Common/Core/Points';
 import { PrimitiveModes } from './Constants';
-import { vtkWarningMacro } from '../../../macros';
+import {vtkErrorMacro, vtkWarningMacro} from '../../../macros';
 
 function importActors(renderer) {
-  const mesh = gltfMesh.newInstance();
-  mesh.getPrimitives().forEach((primitive) => {
-    // const pointData = primitive.getGeometry().getPointData();
 
-    const actor = vtkActor.newInstance();
-    const mapper = vtkMapper.newInstance();
-    mapper.setColorModeToDirectScalars();
-    mapper.setInterpolateScalarsBeforeMapping(true);
+  const model = Loader.model
 
-    mapper.setInputData(primitive.getGeometry());
+  if (!model)
+  {
+    vtkErrorMacro("The GLTF model is nullptr, aborting.")
+    return
+  }
 
-    actor.setMapper(mapper);
+  model.scene[model.defaultScene].node.forEach( (nodeId) => {
+    const node = model.node[nodeId]
+    const mesh = model.meshes[node]
+    mesh.getPrimitives().forEach((primitive) => {
 
-    renderer.addActor(actor);
+      const actor = buildActorFromPrimitive(primitive)
+
+      renderer.addActor(actor);
+    });
+
+    node.children.map((childNodeId) => {
+      const childrenMesh = model.meshes[model.node[childNodeId]]
+      childrenMesh.getPrimitives().forEach((primitive) => {
+
+        const actor = buildActorFromPrimitive(primitive)
+
+        renderer.addActor(actor);
+      });
+    })
   });
+
+  //TODO ApplySkinningMorphing
+}
+
+function buildActorFromPrimitive (primitive) {
+
+  //TODO generate tangent if needed and data from primitive to the mapper
+  // const pointData = primitive.getGeometry().getPointData();
+
+  const actor = vtkActor.newInstance();
+  const mapper = vtkMapper.newInstance();
+  mapper.setColorModeToDirectScalars();
+  mapper.setInterpolateScalarsBeforeMapping(true);
+
+  mapper.setInputData(primitive.getGeometry());
+
+  actor.setMapper(mapper);
+
+  //TODO ApplyGLTFMaterialToVTKActor
+
+  return actor
 }
 
 function buildPolyDataFromPrimitive(primitive) {
@@ -72,6 +107,8 @@ function buildVTKGeometry(model) {
       buildPolyDataFromPrimitive(primitive)
     );
   });
+
+  //TODO BuildGlobalTransforms
 
   return model;
 }

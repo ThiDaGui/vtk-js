@@ -1,6 +1,7 @@
 import { vtkAlgorithm, vtkObject } from '../../../interfaces';
 import vtkRenderer from '../../../Rendering/Core/Renderer';
 import gltfPrimitive from './GLTFPrimitive';
+import vtkActor from "../../../Rendering/Core/Actor";
 
 interface IGLTFImporterOptions {
 	binary?: boolean;
@@ -33,6 +34,8 @@ export interface vtkGLTFImporter extends vtkGLTFImporterBase {
   loadData(options?: IGLTFImporterOptions): Promise<any>;
 
   parse(content: string): void;
+
+	buildActorFromPrimitive(primitive: gltfPrimitive): vtkActor;
 
   buildPolyDataFromPrimitive(primitive: gltfPrimitive): boolean;
 }
