@@ -31,7 +31,7 @@ function buildPolyDataFromPrimitive(primitive) {
   primitive.geometry = geometry;
   if (primitive.attributeValues.position !== undefined) {
     geometry.setPoints(vtkPoints.newInstance());
-    geometry.getPoints().setData(primitive.position);
+    geometry.getPoints().setData(primitive.position.getData());
   }
 
   // Connectivity
@@ -58,8 +58,6 @@ function buildPolyDataFromPrimitive(primitive) {
   }
 
   // Other attributes
-
-  // Set array names
   // TODO
 
   return true;
