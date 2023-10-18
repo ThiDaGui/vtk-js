@@ -22,8 +22,19 @@ export const BufferViewTargets = {
   ELEMENT_ARRAY_BUFFER: 34963,
 };
 
+export const MeshPrimitiveMode = {
+  POINTS: 0,
+  LINES: 1,
+  LINE_LOOP: 2,
+  LINE_STRIP: 3,
+  TRIANGLES: 4,
+  TRIANGLE_STRIP: 5,
+  TRIANGLE_FAN: 6,
+};
+
 export default {
   AccessorComponentTypes,
   AccessorTypes,
   BufferViewTargets,
+  MeshPrimitiveMode,
 };
