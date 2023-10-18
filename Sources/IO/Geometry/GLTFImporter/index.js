@@ -1,49 +1,13 @@
 import vtkActor from '../../../Rendering/Core/Actor';
 import vtkMapper from '../../../Rendering/Core/Mapper';
 import * as macro from '../../../macros';
-import gltfMesh from './GLTFMesh';
 import vtkPolyData from '../../../Common/DataModel/PolyData';
 import vtkPoints from '../../../Common/Core/Points';
 import { PrimitiveModes } from './Constants';
-import {vtkErrorMacro, vtkWarningMacro} from '../../../macros';
+import { vtkErrorMacro, vtkWarningMacro } from '../../../macros';
 
-function importActors(renderer) {
-
-  const model = Loader.model
-
-  if (!model)
-  {
-    vtkErrorMacro("The GLTF model is nullptr, aborting.")
-    return
-  }
-
-  model.scene[model.defaultScene].node.forEach( (nodeId) => {
-    const node = model.node[nodeId]
-    const mesh = model.meshes[node]
-    mesh.getPrimitives().forEach((primitive) => {
-
-      const actor = buildActorFromPrimitive(primitive)
-
-      renderer.addActor(actor);
-    });
-
-    node.children.map((childNodeId) => {
-      const childrenMesh = model.meshes[model.node[childNodeId]]
-      childrenMesh.getPrimitives().forEach((primitive) => {
-
-        const actor = buildActorFromPrimitive(primitive)
-
-        renderer.addActor(actor);
-      });
-    })
-  });
-
-  //TODO ApplySkinningMorphing
-}
-
-function buildActorFromPrimitive (primitive) {
-
-  //TODO generate tangent if needed and data from primitive to the mapper
+function buildActorFromPrimitive(primitive) {
+  // TODO: generate tangent if needed and data from primitive to the mapper
   // const pointData = primitive.getGeometry().getPointData();
 
   const actor = vtkActor.newInstance();
@@ -55,9 +19,37 @@ function buildActorFromPrimitive (primitive) {
 
   actor.setMapper(mapper);
 
-  //TODO ApplyGLTFMaterialToVTKActor
+  // TODO: ApplyGLTFMaterialToVTKActor
 
-  return actor
+  return actor;
+}
+
+function importActors(renderer, model) {
+  if (!model) {
+    vtkErrorMacro('No GLTF model, aborting.');
+    return;
+  }
+
+  model.scene[model.defaultScene].node.forEach((nodeId) => {
+    const node = model.node[nodeId];
+    const mesh = model.meshes[node];
+    mesh.getPrimitives().forEach((primitive) => {
+      const actor = buildActorFromPrimitive(primitive);
+
+      renderer.addActor(actor);
+    });
+
+    node.children.forEach((childNodeId) => {
+      const childrenMesh = model.meshes[model.node[childNodeId]];
+      childrenMesh.getPrimitives().forEach((primitive) => {
+        const actor = buildActorFromPrimitive(primitive);
+
+        renderer.addActor(actor);
+      });
+    });
+  });
+
+  // TODO: ApplySkinningMorphing
 }
 
 function buildPolyDataFromPrimitive(primitive) {
@@ -108,7 +100,7 @@ function buildVTKGeometry(model) {
     );
   });
 
-  //TODO BuildGlobalTransforms
+  // TODO BuildGlobalTransforms
 
   return model;
 }
