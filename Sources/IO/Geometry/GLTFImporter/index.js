@@ -32,15 +32,15 @@ function GetNumberOfCellsForPrimitive(mode, cellSize, numberOfIndices) {
 }
 */
 
-function extractCellBufferData(
+function extractCellBufferDataUint8(
   inputBuffer,
   byteOffset,
   byteStride,
   count,
-  numberOfCoponents,
+  numberOfComponents,
   mode
 ) {
-  let cellSize = numberOfCoponents;
+  let cellSize = numberOfComponents;
 
   if (
     mode === MeshPrimitiveMode.LINE_STRIP ||
@@ -64,20 +64,7 @@ function extractCellBufferData(
   if (mode === MeshPrimitiveMode.TRIANGLE_FAN) {
     let i = 0;
     for (let it = accessorBegin; it < accessorEnd; it += byteStride) {
-      switch (byteStride) {
-        case 1:
-          val = inputBuffer.getUint8(it);
-          break;
-        case 2:
-          val = inputBuffer.getUint16(it);
-          break;
-        case 4:
-          val = inputBuffer.getUint32(it);
-          break;
-        default:
-          break;
-        // error
-      }
+      val = inputBuffer.getUint8(it);
       currentCell[i] = val;
 
       if (it <= accessorBegin + byteStride) {
@@ -90,20 +77,133 @@ function extractCellBufferData(
   } else {
     let i = 0;
     for (let it = accessorBegin; it !== accessorEnd; it += byteStride) {
-      switch (byteStride) {
-        case 1:
-          val = inputBuffer.getUint8(it);
-          break;
-        case 2:
-          val = inputBuffer.getUint16(it);
-          break;
-        case 4:
-          val = inputBuffer.getUint32(it);
-          break;
-        default:
-          // error
-          break;
+      val = inputBuffer.getUint8(it);
+      currentCell[i] = val;
+      i++;
+
+      if (i === currentCell.length) {
+        indicesCellArray.insertNextCell(currentCell);
+        i = 0;
       }
+    }
+
+    if (mode === MeshPrimitiveMode.LINE_LOOP) {
+      currentCell[currentCell.length - 1] = currentCell[0];
+      indicesCellArray.insertNextCell(currentCell);
+    }
+  }
+  return indicesCellArray;
+}
+
+function extractCellBufferDataUint16(
+  inputBuffer,
+  byteOffset,
+  byteStride,
+  count,
+  numberOfComponents,
+  mode
+) {
+  let cellSize = numberOfComponents;
+
+  if (
+    mode === MeshPrimitiveMode.LINE_STRIP ||
+    mode === MeshPrimitiveMode.TRIANGLE_STRIP
+  ) {
+    cellSize = count;
+  } else if (mode === MeshPrimitiveMode.LINE_LOOP) {
+    cellSize = count + 1;
+  }
+
+  // let nCells = GetNumberOfCellsForPrimitive(mode, numberOfCoponents, count)
+
+  const indicesCellArray = vtkCellArray.newInstance();
+
+  const currentCell = Array(cellSize);
+  const accessorBegin = byteOffset;
+  const accessorEnd = accessorBegin + count * byteStride;
+
+  let val;
+
+  if (mode === MeshPrimitiveMode.TRIANGLE_FAN) {
+    let i = 0;
+    for (let it = accessorBegin; it < accessorEnd; it += byteStride) {
+      val = inputBuffer.getUint16(it);
+      currentCell[i] = val;
+
+      if (it <= accessorBegin + byteStride) {
+        i++;
+      } else {
+        indicesCellArray.insertNextCell(currentCell);
+        currentCell[1] = currentCell[2];
+      }
+    }
+  } else {
+    let i = 0;
+    for (let it = accessorBegin; it !== accessorEnd; it += byteStride) {
+      val = inputBuffer.getUint16(it);
+      currentCell[i] = val;
+      i++;
+
+      if (i === currentCell.length) {
+        indicesCellArray.insertNextCell(currentCell);
+        i = 0;
+      }
+    }
+
+    if (mode === MeshPrimitiveMode.LINE_LOOP) {
+      currentCell[currentCell.length - 1] = currentCell[0];
+      indicesCellArray.insertNextCell(currentCell);
+    }
+  }
+  return indicesCellArray;
+}
+
+function extractCellBufferDataUint32(
+  inputBuffer,
+  byteOffset,
+  byteStride,
+  count,
+  numberOfComponents,
+  mode
+) {
+  let cellSize = numberOfComponents;
+
+  if (
+    mode === MeshPrimitiveMode.LINE_STRIP ||
+    mode === MeshPrimitiveMode.TRIANGLE_STRIP
+  ) {
+    cellSize = count;
+  } else if (mode === MeshPrimitiveMode.LINE_LOOP) {
+    cellSize = count + 1;
+  }
+
+  // let nCells = GetNumberOfCellsForPrimitive(mode, numberOfCoponents, count)
+
+  const indicesCellArray = vtkCellArray.newInstance();
+
+  const currentCell = Array(cellSize);
+  const accessorBegin = byteOffset;
+  const accessorEnd = accessorBegin + count * byteStride;
+
+  let val;
+
+  if (mode === MeshPrimitiveMode.TRIANGLE_FAN) {
+    let i = 0;
+    for (let it = accessorBegin; it < accessorEnd; it += byteStride) {
+      val = inputBuffer.getUint32(it);
+      currentCell[i] = val;
+
+      if (it <= accessorBegin + byteStride) {
+        i++;
+      } else {
+        indicesCellArray.insertNextCell(currentCell);
+        currentCell[1] = currentCell[2];
+      }
+    }
+  } else {
+    let i = 0;
+    for (let it = accessorBegin; it !== accessorEnd; it += byteStride) {
+      val = inputBuffer.getUint32(it);
       currentCell[i] = val;
       i++;
 
@@ -197,26 +297,42 @@ function vtkGLTFImporter(publicAPI, model) {
       switch (accessor.componentType) {
         case AccessorComponentTypes.UNSIGNED_BYTE:
           byteStride = 1;
+          primitive.indicesArray = extractCellBufferDataUint8(
+            buffer,
+            byteOffset,
+            bufferView.byteStride ?? byteStride,
+            accessor.count,
+            primitive.cellSize,
+            primitive.mode
+          );
           break;
         case AccessorComponentTypes.UNSIGNED_SHORT:
           byteStride = 2;
+          primitive.indicesArray = extractCellBufferDataUint16(
+            buffer,
+            byteOffset,
+            bufferView.byteStride ?? byteStride,
+            accessor.count,
+            primitive.cellSize,
+            primitive.mode
+          );
           break;
         case AccessorComponentTypes.UNSIGNED_INT:
           byteStride = 4;
+          primitive.indicesArray = extractCellBufferDataUint32(
+            buffer,
+            byteOffset,
+            bufferView.byteStride ?? byteStride,
+            accessor.count,
+            primitive.cellSize,
+            primitive.mode
+          );
           break;
         default:
           throw new Error(
             'Invalid accessor.componentType for primitive connectivity. Expected either GL_UNSIGNED_BYTE, GL_UNSIGNED_SHORT or GL_UNSIGNED_INT.'
           );
       }
-      primitive.indicesArray = extractCellBufferData(
-        buffer,
-        byteOffset,
-        bufferView.byteStride ?? byteStride,
-        accessor.count,
-        primitive.cellSize,
-        primitive.mode
-      );
     }
 
     // extractPrimitiveAttributes(primitive);
