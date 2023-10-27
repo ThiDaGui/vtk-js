@@ -1,13 +1,13 @@
 import macro, { vtkWarningMacro } from '@kitware/vtk.js/macros';
 import DataAccessHelper from 'vtk.js/Sources/IO/Core/DataAccessHelper';
 import vtkCellArray from 'vtk.js/Sources/Common/Core/CellArray';
-// Enable data soure for DataAccessHelper
-import 'vtk.js/Sources/IO/Core/DataAccessHelper/LiteHttpDataAccessHelper'; // Just need HTTP
 import Constants from 'constants';
 // import vtkActor from '../../../Rendering/Core/Actor';
 // import vtkMapper from '../../../Rendering/Core/Mapper';
 import vtkPolyData from '../../../Common/DataModel/PolyData';
 import vtkPoints from '../../../Common/Core/Points';
+// Enable data soure for DataAccessHelper
+import 'vtk.js/Sources/IO/Core/DataAccessHelper/LiteHttpDataAccessHelper'; // Just need HTTP
 
 const { AccessorComponentTypes, AccessorTypes, MeshPrimitiveModes } = Constants;
 
@@ -285,7 +285,7 @@ function buildPolyDataFromPrimitive(primitive) {
 
 function buildVTKGeometry(model) {
   // build poly data
-  model.meshes.forEach((mesh) => {
+  model.GLTFData.meshes.forEach((mesh) => {
     mesh.primitives.forEach((primitive) =>
       buildPolyDataFromPrimitive(primitive)
     );
