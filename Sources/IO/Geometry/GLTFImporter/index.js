@@ -1,13 +1,14 @@
 import macro, { vtkWarningMacro } from '@kitware/vtk.js/macros';
 import DataAccessHelper from 'vtk.js/Sources/IO/Core/DataAccessHelper';
 import vtkCellArray from 'vtk.js/Sources/Common/Core/CellArray';
-import Constants from 'constants';
-// import vtkActor from '../../../Rendering/Core/Actor';
-// import vtkMapper from '../../../Rendering/Core/Mapper';
 import vtkPolyData from '../../../Common/DataModel/PolyData';
 import vtkPoints from '../../../Common/Core/Points';
+import vtkDataArray from '../../../Common/Core/DataArray';
+
 // Enable data soure for DataAccessHelper
 import 'vtk.js/Sources/IO/Core/DataAccessHelper/LiteHttpDataAccessHelper'; // Just need HTTP
+
+import Constants from './Constants';
 
 const { AccessorComponentTypes, AccessorTypes, MeshPrimitiveModes } = Constants;
 
@@ -34,6 +35,44 @@ function GetNumberOfCellsForPrimitive(mode, cellSize, numberOfIndices) {
       return 0;
   }
 } */
+
+function getNumberOfComponentsForType(accessorType) {
+  switch (accessorType) {
+    case AccessorTypes.SCALAR:
+      return 1;
+    case AccessorTypes.VEC2:
+      return 2;
+    case AccessorTypes.VEC3:
+      return 3;
+    case AccessorTypes.VEC4:
+      return 4;
+    case AccessorTypes.MAT2:
+      return 4;
+    case AccessorTypes.MAT3:
+      return 9;
+    case AccessorTypes.MAT4:
+      return 16;
+    default:
+      throw new Error('Invalid primitive.accessorType value');
+  }
+}
+
+function calculatePrimitiveCellSize(mode) {
+  switch (mode) {
+    case MeshPrimitiveModes.POINTS:
+      return 1;
+    case MeshPrimitiveModes.LINES:
+    case MeshPrimitiveModes.LINE_LOOP:
+    case MeshPrimitiveModes.LINE_STRIP:
+      return 2;
+    case MeshPrimitiveModes.TRIANGLES:
+    case MeshPrimitiveModes.TRIANGLE_STRIP:
+    case MeshPrimitiveModes.TRIANGLE_FAN:
+      return 3;
+    default:
+      throw new Error('Invalid primitive.mode value, must be between 0 and 6');
+  }
+}
 
 function extractCellBufferDataUint8(
   inputBuffer,
@@ -67,7 +106,7 @@ function extractCellBufferDataUint8(
   if (mode === MeshPrimitiveModes.TRIANGLE_FAN) {
     let i = 0;
     for (let it = accessorBegin; it < accessorEnd; it += byteStride) {
-      val = inputBuffer.getUint8(it);
+      val = inputBuffer.getUint8(it, true);
       currentCell[i] = val;
 
       if (it <= accessorBegin + byteStride) {
@@ -80,7 +119,7 @@ function extractCellBufferDataUint8(
   } else {
     let i = 0;
     for (let it = accessorBegin; it !== accessorEnd; it += byteStride) {
-      val = inputBuffer.getUint8(it);
+      val = inputBuffer.getUint8(it, true);
       currentCell[i] = val;
       i++;
 
@@ -130,7 +169,7 @@ function extractCellBufferDataUint16(
   if (mode === MeshPrimitiveModes.TRIANGLE_FAN) {
     let i = 0;
     for (let it = accessorBegin; it < accessorEnd; it += byteStride) {
-      val = inputBuffer.getUint16(it);
+      val = inputBuffer.getUint16(it, true);
       currentCell[i] = val;
 
       if (it <= accessorBegin + byteStride) {
@@ -143,7 +182,7 @@ function extractCellBufferDataUint16(
   } else {
     let i = 0;
     for (let it = accessorBegin; it !== accessorEnd; it += byteStride) {
-      val = inputBuffer.getUint16(it);
+      val = inputBuffer.getUint16(it, true);
       currentCell[i] = val;
       i++;
 
@@ -193,7 +232,7 @@ function extractCellBufferDataUint32(
   if (mode === MeshPrimitiveModes.TRIANGLE_FAN) {
     let i = 0;
     for (let it = accessorBegin; it < accessorEnd; it += byteStride) {
-      val = inputBuffer.getUint32(it);
+      val = inputBuffer.getUint32(it, true);
       currentCell[i] = val;
 
       if (it <= accessorBegin + byteStride) {
@@ -206,7 +245,7 @@ function extractCellBufferDataUint32(
   } else {
     let i = 0;
     for (let it = accessorBegin; it !== accessorEnd; it += byteStride) {
-      val = inputBuffer.getUint32(it);
+      val = inputBuffer.getUint32(it, true);
       currentCell[i] = val;
       i++;
 
@@ -224,26 +263,57 @@ function extractCellBufferDataUint32(
   return indicesCellArray;
 }
 
-function calculatePrimitiveCellSize(mode) {
-  switch (mode) {
-    case MeshPrimitiveModes.POINTS:
-      return 1;
-    case MeshPrimitiveModes.LINES:
-    case MeshPrimitiveModes.LINE_LOOP:
-    case MeshPrimitiveModes.LINE_STRIP:
-      return 2;
-    case MeshPrimitiveModes.TRIANGLES:
-    case MeshPrimitiveModes.TRIANGLE_STRIP:
-    case MeshPrimitiveModes.TRIANGLE_FAN:
-      return 3;
-    default:
-      throw new Error('Invalid primitive.mode value, must be between 0 and 6');
+function extractDataArrayFloat(
+  inputBuffer,
+  byteOffset,
+  byteStride,
+  count,
+  numberOfComponents
+) {
+  const accessorBegin = byteOffset;
+  const accessorEnd = byteOffset + count * byteStride;
+  const size = 4;
+
+  const values = [];
+  for (let iter = accessorBegin; iter !== accessorEnd; iter += byteStride) {
+    let val;
+
+    for (
+      let elemIter = iter;
+      elemIter !== iter + numberOfComponents * size;
+      elemIter += 4
+    ) {
+      val = inputBuffer.getFloat32(elemIter, true);
+      values.push(val);
+    }
   }
+  const array = vtkDataArray.newInstance({
+    numberOfComponents: 3,
+    values,
+  });
+  return array;
 }
 
-// ----------------------------------------------------------------------------
-// vtkGLTFImporter methods
-// ----------------------------------------------------------------------------
+function extractDataArray(
+  buffer,
+  byteOffset,
+  bufferView,
+  accessor,
+  numberOfComponents
+) {
+  switch (accessor.componentType) {
+    case AccessorComponentTypes.FLOAT:
+      return extractDataArrayFloat(
+        buffer,
+        byteOffset,
+        bufferView.byteStride ?? 4 * numberOfComponents,
+        accessor.count,
+        numberOfComponents
+      );
+    default:
+      throw new Error('unsupported accessor type for primitive attribute');
+  }
+}
 
 function buildPolyDataFromPrimitive(primitive) {
   // Positions
@@ -251,7 +321,7 @@ function buildPolyDataFromPrimitive(primitive) {
   primitive.geometry = geometry;
   if (primitive.attributeValues.position !== undefined) {
     geometry.setPoints(vtkPoints.newInstance());
-    geometry.getPoints().setData(primitive.position.getData());
+    geometry.getPoints().setData(primitive.attributeValues.position.getData());
   }
 
   // Connectivity
@@ -260,18 +330,18 @@ function buildPolyDataFromPrimitive(primitive) {
   switch (primitive.mode) {
     case MeshPrimitiveModes.TRIANGLES:
     case MeshPrimitiveModes.TRIANGLE_FAN:
-      geometry.setPolys(primitive.indices);
+      geometry.setPolys(primitive.indicesArray);
       break;
     case MeshPrimitiveModes.LINES:
-    case MeshPrimitiveModes.lINE_STRIP:
+    case MeshPrimitiveModes.LINE_STRIP:
     case MeshPrimitiveModes.LINE_LOOP:
-      geometry.setLines(primitive.indices);
+      geometry.setLines(primitive.indicesArray);
       break;
     case MeshPrimitiveModes.POINTS:
-      geometry.setVerts(primitive.indices);
+      geometry.setVerts(primitive.indicesArray);
       break;
     case MeshPrimitiveModes.TRIANGLE_STRIP:
-      geometry.setStrips(primitive.indices);
+      geometry.setStrips(primitive.indicesArray);
       break;
     default:
       vtkWarningMacro('Invalid primitive draw mode. Ignoring connectivity.');
@@ -293,6 +363,10 @@ function buildVTKGeometry(model) {
 
   return model;
 }
+
+// ----------------------------------------------------------------------------
+// vtkGLTFImporter methods
+// ----------------------------------------------------------------------------
 
 function vtkGLTFImporter(publicAPI, model) {
   //
@@ -331,6 +405,29 @@ function vtkGLTFImporter(publicAPI, model) {
       default:
         return Promise.reject(new Error('Unsuported file type.'));
     }
+  }
+
+  function extractPrimitiveAttributes(primitive) {
+    primitive.attributeValues = {};
+    const tmp = Object.keys(primitive.attributes);
+    tmp.forEach((attributeKey) => {
+      if (attributeKey === 'POSITION') {
+        const attribute = primitive.attributes[attributeKey];
+        const accessor = model.GLTFData.accessors[attribute];
+        const bufferView = model.GLTFData.bufferViews[accessor.bufferView];
+        const buffer = model.GLTFData.buffers[bufferView.buffer].dataView;
+        const byteOffset = accessor.byteOffset + bufferView.byteOffset;
+        const numberOfComponents = getNumberOfComponentsForType(accessor.type);
+
+        primitive.attributeValues.position = extractDataArray(
+          buffer,
+          byteOffset,
+          bufferView,
+          accessor,
+          numberOfComponents
+        );
+      }
+    });
   }
 
   function extractPrimitiveAccessorData(primitive) {
@@ -387,7 +484,7 @@ function vtkGLTFImporter(publicAPI, model) {
       }
     }
 
-    // extractPrimitiveAttributes(primitive);
+    extractPrimitiveAttributes(primitive);
   }
 
   async function loadData() {
