@@ -57,8 +57,8 @@ function getNumberOfComponentsForType(accessorType) {
   }
 }
 
-function calculatePrimitiveCellSize(mode) {
-  switch (mode) {
+function calculatePrimitiveCellSize(meshPrimitiveMode) {
+  switch (meshPrimitiveMode) {
     case MeshPrimitiveModes.POINTS:
       return 1;
     case MeshPrimitiveModes.LINES:

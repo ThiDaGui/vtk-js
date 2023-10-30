@@ -3,6 +3,8 @@ import vtkRenderer from '../../../Rendering/Core/Renderer';
 
 interface IGLTFImporterOptions {
 	binary?: boolean;
+	compression?: boolean;
+	progressCallback?: boolean;
 }
 
 export interface IGLTFImporterInitialValues {}
