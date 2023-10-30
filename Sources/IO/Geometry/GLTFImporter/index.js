@@ -118,7 +118,7 @@ function extractCellBufferDataUint8(
     }
   } else {
     let i = 0;
-    for (let it = accessorBegin; it !== accessorEnd; it += byteStride) {
+    for (let it = accessorBegin; it < accessorEnd; it += byteStride) {
       val = inputBuffer.getUint8(it, true);
       currentCell[i] = val;
       i++;
@@ -181,7 +181,7 @@ function extractCellBufferDataUint16(
     }
   } else {
     let i = 0;
-    for (let it = accessorBegin; it !== accessorEnd; it += byteStride) {
+    for (let it = accessorBegin; it < accessorEnd; it += byteStride) {
       val = inputBuffer.getUint16(it, true);
       currentCell[i] = val;
       i++;
@@ -244,7 +244,7 @@ function extractCellBufferDataUint32(
     }
   } else {
     let i = 0;
-    for (let it = accessorBegin; it !== accessorEnd; it += byteStride) {
+    for (let it = accessorBegin; it < accessorEnd; it += byteStride) {
       val = inputBuffer.getUint32(it, true);
       currentCell[i] = val;
       i++;
@@ -274,17 +274,19 @@ function extractDataArrayFloat(
   const accessorEnd = byteOffset + count * byteStride;
   const size = 4;
 
-  const values = [];
-  for (let iter = accessorBegin; iter !== accessorEnd; iter += byteStride) {
+  const values = new Float32Array(count * numberOfComponents);
+  let i = 0;
+  for (let iter = accessorBegin; iter < accessorEnd; iter += byteStride) {
     let val;
 
     for (
       let elemIter = iter;
-      elemIter !== iter + numberOfComponents * size;
+      elemIter < iter + numberOfComponents * size;
       elemIter += 4
     ) {
       val = inputBuffer.getFloat32(elemIter, true);
-      values.push(val);
+      values[i] = val;
+      i++;
     }
   }
   const array = vtkDataArray.newInstance({
@@ -409,8 +411,8 @@ function vtkGLTFImporter(publicAPI, model) {
 
   function extractPrimitiveAttributes(primitive) {
     primitive.attributeValues = {};
-    const tmp = Object.keys(primitive.attributes);
-    tmp.forEach((attributeKey) => {
+    const attributeKeys = Object.keys(primitive.attributes);
+    attributeKeys.forEach((attributeKey) => {
       if (attributeKey === 'POSITION') {
         const attribute = primitive.attributes[attributeKey];
         const accessor = model.GLTFData.accessors[attribute];
@@ -492,8 +494,7 @@ function vtkGLTFImporter(publicAPI, model) {
       let uri = buffer.uri;
       // const length = buffer.byteLength;
 
-      // TODO: case when the uri is not a path (ie a base64 or other)
-      if (uri[0] !== '/') {
+      if (!/^data:/.test(uri) && uri[0] !== '/') {
         // relative path
         uri = model.baseURL.concat('/', uri);
       }
