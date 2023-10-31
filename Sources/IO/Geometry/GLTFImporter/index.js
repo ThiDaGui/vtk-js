@@ -355,17 +355,6 @@ function buildPolyDataFromPrimitive(primitive) {
   return true;
 }
 
-function buildVTKGeometry(model) {
-  // build poly data
-  model.GLTFData.meshes.forEach((mesh) => {
-    mesh.primitives.forEach((primitive) =>
-      buildPolyDataFromPrimitive(primitive)
-    );
-  });
-
-  return model;
-}
-
 // ----------------------------------------------------------------------------
 // vtkGLTFImporter methods
 // ----------------------------------------------------------------------------
@@ -518,6 +507,15 @@ function vtkGLTFImporter(publicAPI, model) {
     });
   }
 
+  function buildVTKGeometry() {
+    // build poly data
+    model.GLTFData.meshes.forEach((mesh) => {
+      mesh.primitives.forEach((primitive) =>
+        buildPolyDataFromPrimitive(primitive)
+      );
+    });
+  }
+
   publicAPI.setUrl = async (url) => {
     model.url = url;
 
@@ -533,7 +531,7 @@ function vtkGLTFImporter(publicAPI, model) {
 
     await loadData();
 
-    buildVTKGeometry(model);
+    buildVTKGeometry();
   };
 }
 
