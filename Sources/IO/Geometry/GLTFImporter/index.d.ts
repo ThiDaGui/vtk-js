@@ -1,5 +1,5 @@
 import { vtkAlgorithm, vtkObject } from '../../../interfaces';
-import vtkRenderer from '../../../Rendering/Core/Renderer';`
+import vtkRenderer from '../../../Rendering/Core/Renderer';
 
 interface IGLTFImporterOptions {
 	binary?: boolean;

@@ -38,7 +38,6 @@ function GetNumberOfCellsForPrimitive(mode, cellSize, numberOfIndices) {
   }
 } */
 
-
 function buildActorFromPrimitive(primitive) {
   // TODO: generate tangent if needed and data from primitive to the mapper
   // const pointData = primitive.getGeometry().getPointData();
@@ -55,34 +54,6 @@ function buildActorFromPrimitive(primitive) {
   // TODO: ApplyGLTFMaterialToVTKActor
 
   return actor;
-}
-
-function importActors(renderer, model) {
-  if (!model) {
-    vtkErrorMacro('No GLTF model, aborting.');
-    return;
-  }
-
-  model.scene[model.defaultScene].node.forEach((nodeId) => {
-    const node = model.node[nodeId];
-    const mesh = model.meshes[node];
-    mesh.getPrimitives().forEach((primitive) => {
-      const actor = buildActorFromPrimitive(primitive);
-
-      renderer.addActor(actor);
-    });
-
-    node.children.forEach((childNodeId) => {
-      const childrenMesh = model.meshes[model.node[childNodeId]];
-      childrenMesh.getPrimitives().forEach((primitive) => {
-        const actor = buildActorFromPrimitive(primitive);
-
-        renderer.addActor(actor);
-      });
-    });
-  });
-
-  // TODO: ApplySkinningMorphing
 }
 
 function getNumberOfComponentsForType(accessorType) {
@@ -564,6 +535,29 @@ function vtkGLTFImporter(publicAPI, model) {
     });
   }
 
+  function importActors() {
+    model.scene[model.defaultScene].node.forEach((nodeId) => {
+      const node = model.node[nodeId];
+      const mesh = model.meshes[node];
+      mesh.getPrimitives().forEach((primitive) => {
+        const actor = buildActorFromPrimitive(primitive);
+
+        model.renderer.addActor(actor);
+      });
+
+      node.children.forEach((childNodeId) => {
+        const childrenMesh = model.meshes[model.node[childNodeId]];
+        childrenMesh.getPrimitives().forEach((primitive) => {
+          const actor = buildActorFromPrimitive(primitive);
+
+          model.renderer.addActor(actor);
+        });
+      });
+    });
+
+    // TODO: ApplySkinningMorphing
+  }
+
   publicAPI.setUrl = async (url) => {
     model.url = url;
 
@@ -580,6 +574,8 @@ function vtkGLTFImporter(publicAPI, model) {
     await loadData();
 
     buildVTKGeometry();
+
+    importActors();
   };
 }
 
