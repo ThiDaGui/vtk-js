@@ -11,7 +11,7 @@ import vtkRenderWindowInteractor from '@kitware/vtk.js/Rendering/Core/RenderWind
 // ----------------------------------------------------------------------------
 // Standard rendering code setup
 const fullScreenRenderer = vtkFullScreenRenderWindow.newInstance({
-  background: [0.5, 0.5, 0.5]
+  background: [0.5, 0.5, 0.5],
 });
 const renderer = fullScreenRenderer.getRenderer();
 const renderWindow = fullScreenRenderer.getRenderWindow();
@@ -25,15 +25,10 @@ importer.setRenderer(renderer);
 importer.setRenderWindow(renderWindow);
 importer.setInteractor(interactor);
 importer.setInteractorStyle(style);
-const headLight = vtkLight.newInstance({ lightType: 0});
+const headLight = vtkLight.newInstance({ lightType: 0 });
 renderer.addLight(headLight);
 renderer.resetCamera();
-renderer.getActiveCamera().azimuth(20)
-renderer.getActiveCamera().elevation(30)
+renderer.getActiveCamera().azimuth(20);
+renderer.getActiveCamera().elevation(30);
 renderer.resetCameraClippingRange();
 renderWindow.render();
-
-
-
-
-
