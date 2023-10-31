@@ -4,6 +4,8 @@ import vtkCellArray from 'vtk.js/Sources/Common/Core/CellArray';
 import vtkPolyData from '../../../Common/DataModel/PolyData';
 import vtkPoints from '../../../Common/Core/Points';
 import vtkDataArray from '../../../Common/Core/DataArray';
+import vtkActor from '../../../Rendering/Core/Actor';
+import vtkMapper from '../../../Rendering/Core/Mapper';
 
 // Enable data soure for DataAccessHelper
 import 'vtk.js/Sources/IO/Core/DataAccessHelper/LiteHttpDataAccessHelper'; // Just need HTTP
@@ -35,6 +37,24 @@ function GetNumberOfCellsForPrimitive(mode, cellSize, numberOfIndices) {
       return 0;
   }
 } */
+
+function buildActorFromPrimitive(primitive) {
+  // TODO: generate tangent if needed and data from primitive to the mapper
+  // const pointData = primitive.getGeometry().getPointData();
+
+  const actor = vtkActor.newInstance();
+  const mapper = vtkMapper.newInstance();
+  mapper.setColorModeToDirectScalars();
+  mapper.setInterpolateScalarsBeforeMapping(true);
+
+  mapper.setInputData(primitive.getGeometry());
+
+  actor.setMapper(mapper);
+
+  // TODO: ApplyGLTFMaterialToVTKActor
+
+  return actor;
+}
 
 function getNumberOfComponentsForType(accessorType) {
   switch (accessorType) {
@@ -516,6 +536,29 @@ function vtkGLTFImporter(publicAPI, model) {
     });
   }
 
+  function importActors() {
+    model.scene[model.defaultScene].node.forEach((nodeId) => {
+      const node = model.node[nodeId];
+      const mesh = model.meshes[node];
+      mesh.getPrimitives().forEach((primitive) => {
+        const actor = buildActorFromPrimitive(primitive);
+
+        model.renderer.addActor(actor);
+      });
+
+      node.children.forEach((childNodeId) => {
+        const childrenMesh = model.meshes[model.node[childNodeId]];
+        childrenMesh.getPrimitives().forEach((primitive) => {
+          const actor = buildActorFromPrimitive(primitive);
+
+          model.renderer.addActor(actor);
+        });
+      });
+    });
+
+    // TODO: ApplySkinningMorphing
+  }
+
   publicAPI.setUrl = async (url) => {
     model.url = url;
 
@@ -532,6 +575,8 @@ function vtkGLTFImporter(publicAPI, model) {
     await loadData();
 
     buildVTKGeometry();
+
+    importActors();
   };
 }
 
