@@ -22,16 +22,18 @@ type vtkGLTFImporterBase = vtkObject & Omit<vtkAlgorithm,
 	| 'getOutputConnection'>;
 
 export interface vtkGLTFImporter extends vtkGLTFImporterBase {
-  	/**
-	 * Get the url of the object to load.
-	 */
-	getUrl(): string;
+  /**
+  * Get the url of the object to load.
+  */
+  getUrl(): string;
 
-  	getRenderer(): vtkRenderer;
+  setUrl(url: string): Promise<void>;
 
-  	setRenderer(renderer: vtkRenderer): Promise<string | any>;
+  getRenderer(): vtkRenderer;
 
-  	loadData(options?: IGLTFImporterOptions): Promise<any>;
+  setRenderer(renderer: vtkRenderer): boolean;
+
+  loadData(options?: IGLTFImporterOptions): Promise<any>;
 }
 
 export function extend(publicAPI: object, model: object, initialValues?: IGLTFImporterInitialValues): void;
