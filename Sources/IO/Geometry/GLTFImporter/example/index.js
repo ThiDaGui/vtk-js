@@ -51,7 +51,7 @@ const gltf = vtkGLTFImporter.newInstance();
 gltf.setRenderer(renderer);
 renderer.setRenderWindow(renderWindow);
 
-gltf.setUrl(`${__BASE_PATH__}/data/gltf/Box/Box.gltf`).then();
-
-resetCamera();
-render();
+gltf.setUrl(`${__BASE_PATH__}/data/gltf/Box/Box.gltf`).then(() => {
+  resetCamera();
+  render();
+});
