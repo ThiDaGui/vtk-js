@@ -47,7 +47,7 @@ function buildActorFromPrimitive(primitive) {
   mapper.setColorModeToDirectScalars();
   mapper.setInterpolateScalarsBeforeMapping(true);
 
-  mapper.setInputData(primitive.getGeometry());
+  mapper.setInputData(primitive.geometry);
 
   actor.setMapper(mapper);
 
@@ -537,23 +537,30 @@ function vtkGLTFImporter(publicAPI, model) {
   }
 
   function importActors() {
-    model.scene[model.defaultScene].node.forEach((nodeId) => {
-      const node = model.node[nodeId];
-      const mesh = model.meshes[node];
-      mesh.getPrimitives().forEach((primitive) => {
+    model.GLTFData.scenes[0].nodes.forEach((nodeId) => {
+      const node = model.GLTFData.nodes[nodeId];
+      const mesh = model.GLTFData.meshes[node.mesh];
+      mesh.primitives.forEach((primitive) => {
         const actor = buildActorFromPrimitive(primitive);
 
         model.renderer.addActor(actor);
+
+        actor.getMapper().setScalarVisibility(true);
+        const clr = { r: 200 / 255.0, g: 200 / 255.0, b: 200 / 255.0 };
+        actor.getProperty().setColor(clr.r, clr.g, clr.b);
       });
 
-      node.children.forEach((childNodeId) => {
-        const childrenMesh = model.meshes[model.node[childNodeId]];
-        childrenMesh.getPrimitives().forEach((primitive) => {
-          const actor = buildActorFromPrimitive(primitive);
+      if (node.children != null) {
+        node.children.forEach((childNodeId) => {
+          const childrenMesh =
+            model.GLTFData.meshes[model.GLTFData.node[childNodeId]];
+          childrenMesh.primitives.forEach((primitive) => {
+            const actor = buildActorFromPrimitive(primitive);
 
-          model.renderer.addActor(actor);
+            model.renderer.addActor(actor);
+          });
         });
-      });
+      }
     });
 
     // TODO: ApplySkinningMorphing
