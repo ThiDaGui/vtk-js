@@ -3,6 +3,8 @@ import vtkRenderer from '../../../Rendering/Core/Renderer';
 
 interface IGLTFImporterOptions {
 	binary?: boolean;
+	compression?: boolean;
+	progressCallback?: boolean;
 }
 
 export interface IGLTFImporterInitialValues {}
@@ -14,24 +16,24 @@ type vtkGLTFImporterBase = vtkObject & Omit<vtkAlgorithm,
 	| 'getInputConnection'
 	| 'addInputConnection'
 	| 'addInputData'
-  | 'getOuputData'
-  | 'setOutputData'
-  | 'setOuputConnection'
-  | 'getOutputConnection'>;
+	| 'getOuputData'
+	| 'setOutputData'
+	| 'setOuputConnection'
+	| 'getOutputConnection'>;
 
 export interface vtkGLTFImporter extends vtkGLTFImporterBase {
-  	/**
-	 * Get the url of the object to load.
-	 */
-	getUrl(): string;
+  /**
+  * Get the url of the object to load.
+  */
+  getUrl(): string;
+
+  setUrl(url: string): Promise<void>;
 
   getRenderer(): vtkRenderer;
 
-  setRenderer(renderer: vtkRenderer): Promise<string | any>;
+  setRenderer(renderer: vtkRenderer): boolean;
 
   loadData(options?: IGLTFImporterOptions): Promise<any>;
-
-  parse(content: string): void;
 }
 
 export function extend(publicAPI: object, model: object, initialValues?: IGLTFImporterInitialValues): void;
