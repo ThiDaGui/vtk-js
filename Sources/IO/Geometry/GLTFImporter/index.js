@@ -1,6 +1,7 @@
 import macro, { vtkWarningMacro } from '@kitware/vtk.js/macros';
 import DataAccessHelper from 'vtk.js/Sources/IO/Core/DataAccessHelper';
 import vtkCellArray from 'vtk.js/Sources/Common/Core/CellArray';
+import { mat4 } from 'gl-matrix';
 import vtkPolyData from '../../../Common/DataModel/PolyData';
 import vtkPoints from '../../../Common/Core/Points';
 import vtkDataArray from '../../../Common/Core/DataArray';
@@ -37,24 +38,6 @@ function GetNumberOfCellsForPrimitive(mode, cellSize, numberOfIndices) {
       return 0;
   }
 } */
-
-function buildActorFromPrimitive(primitive) {
-  // TODO: generate tangent if needed and data from primitive to the mapper
-  // const pointData = primitive.getGeometry().getPointData();
-
-  const actor = vtkActor.newInstance();
-  const mapper = vtkMapper.newInstance();
-  mapper.setColorModeToDirectScalars();
-  mapper.setInterpolateScalarsBeforeMapping(true);
-
-  mapper.setInputData(primitive.geometry);
-
-  actor.setMapper(mapper);
-
-  // TODO: ApplyGLTFMaterialToVTKActor
-
-  return actor;
-}
 
 function getNumberOfComponentsForType(accessorType) {
   switch (accessorType) {
@@ -527,6 +510,28 @@ function vtkGLTFImporter(publicAPI, model) {
     });
   }
 
+  function buildGlobalTransforms(nodeId, parentTransform = null) {
+    const node = model.GLTFData.nodes[nodeId];
+
+    // TODO remove the node.matrix comparison because it should be a default matrix
+    if (node.matrix) node.GlobalTransform = mat4.clone(node.matrix);
+
+    // TODO remove the node.matrix comparison because it should be a default matrix
+    if (parentTransform && node.matrix) {
+      mat4.multiply(
+        node.GlobalTransform,
+        parentTransform,
+        node.GlobalTransform
+      );
+    }
+
+    if (node.children) {
+      node.children.forEach((childId) => {
+        buildGlobalTransforms(childId, node.GlobalTransform);
+      });
+    }
+  }
+
   function buildVTKGeometry() {
     // build poly data
     model.GLTFData.meshes.forEach((mesh) => {
@@ -534,34 +539,82 @@ function vtkGLTFImporter(publicAPI, model) {
         buildPolyDataFromPrimitive(primitive)
       );
     });
+
+    // Compute global transforms
+    model.GLTFData.scenes.forEach((scene) => {
+      scene.nodes.forEach((nodeId) => buildGlobalTransforms(nodeId));
+    });
+  }
+
+  function ApplyGLTFMaterialToVTKActor(primitive, actor) {
+    const material = model.GLTFData.materials[primitive.material];
+
+    // TODO check if multiple texture coordinates for the same model because it is not supported
+
+    const property = actor.getProperty();
+    if (material.pbrMetallicRoughness.baseColorFactor.length !== 0) {
+      material.pbrMetallicRoughness.baseColorFactor.pop();
+      property.setColor(material.pbrMetallicRoughness.baseColorFactor);
+      property.setMetallic(material.pbrMetallicRoughness.metallicFactor);
+      property.setRoughness(material.pbrMetallicRoughness.roughnessFactor);
+    }
+    if (material.alphaMode === 'OPAQUE') actor.setForceOpaque(true);
+  }
+
+  function buildActorFromPrimitive(primitive) {
+    const actor = vtkActor.newInstance();
+    const mapper = vtkMapper.newInstance();
+    mapper.setColorModeToDirectScalars();
+    mapper.setInterpolateScalarsBeforeMapping(true);
+
+    // TODO: generate tangent if needed and data from primitive to the mapper
+    // Probleme it is not support in vtkjs
+
+    mapper.setInputData(primitive.geometry);
+
+    actor.setMapper(mapper);
+
+    // TODO: finish ApplyGLTFMaterialToVTKActor
+    ApplyGLTFMaterialToVTKActor(primitive, actor);
+
+    return actor;
   }
 
   function importActors() {
-    model.GLTFData.scenes[0].nodes.forEach((nodeId) => {
+    const defaultScene = model.GLTFData.scene;
+    // Add root nodes to the stack of node to import
+    const nodeIdStack = model.GLTFData.scenes[defaultScene].nodes;
+
+    while (nodeIdStack.length !== 0) {
+      const nodeId = nodeIdStack.pop();
       const node = model.GLTFData.nodes[nodeId];
-      const mesh = model.GLTFData.meshes[node.mesh];
-      mesh.primitives.forEach((primitive) => {
-        const actor = buildActorFromPrimitive(primitive);
 
-        model.renderer.addActor(actor);
+      // Import node's geometry
+      if (node.mesh >= 0) {
+        const mesh = model.GLTFData.meshes[node.mesh];
+        mesh.primitives.forEach((primitive) => {
+          const actor = buildActorFromPrimitive(primitive);
+          // add the transformation matrix of the node calculated in BuildGlobalTransforms
+          // TODO remove the comparison because it should always been present
+          if (node.GlobalTransform) {
+            actor.setUserMatrix(node.GlobalTransform);
+          }
 
-        actor.getMapper().setScalarVisibility(true);
-        const clr = { r: 200 / 255.0, g: 200 / 255.0, b: 200 / 255.0 };
-        actor.getProperty().setColor(clr.r, clr.g, clr.b);
-      });
+          // TODO remove
+          const clr = { r: 200 / 255.0, g: 200 / 255.0, b: 200 / 255.0 };
+          actor.getProperty().setColor(clr.r, clr.g, clr.b);
 
-      if (node.children != null) {
-        node.children.forEach((childNodeId) => {
-          const childrenMesh =
-            model.GLTFData.meshes[model.GLTFData.node[childNodeId]];
-          childrenMesh.primitives.forEach((primitive) => {
-            const actor = buildActorFromPrimitive(primitive);
-
-            model.renderer.addActor(actor);
-          });
+          model.renderer.addActor(actor);
         });
       }
-    });
+
+      // Add node's children to the stack
+      if (node.children != null) {
+        node.children.forEach((childNodeId) => {
+          nodeIdStack.push(childNodeId);
+        });
+      }
+    }
 
     // TODO: ApplySkinningMorphing
   }
