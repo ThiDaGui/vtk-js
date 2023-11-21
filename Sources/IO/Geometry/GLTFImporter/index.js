@@ -11,6 +11,7 @@ import vtkMapper from '../../../Rendering/Core/Mapper';
 import 'vtk.js/Sources/IO/Core/DataAccessHelper/LiteHttpDataAccessHelper'; // Just need HTTP
 
 import Constants from './Constants';
+import vtkDataSetAttributes from '../../../Common/DataModel/DataSetAttributes';
 
 const { AccessorComponentTypes, AccessorTypes, MeshPrimitiveModes } = Constants;
 
@@ -368,10 +369,57 @@ function buildPolyDataFromPrimitive(primitive) {
     default:
       vtkWarningMacro('Invalid primitive draw mode. Ignoring connectivity.');
   }
-
   // Other attributes
-  // TODO
 
+  // Set vtkDataArray names
+  Object.keys(primitive.attributeValues).forEach(([key, value]) => {
+    value.setName(key);
+  });
+
+  const pointData = vtkDataSetAttributes.newInstance();
+  geometry.setPointData(pointData);
+
+  if (primitive.attributeValues.normal !== undefined) {
+    pointData.setNormals(primitive.attributeValues.normal);
+  }
+  if (primitive.attributeValues.tangent !== undefined) {
+    // No tangent in pointData
+  }
+  if (primitive.attributeValues.color_0 !== undefined) {
+    pointData.setScalars(primitive.attributeValues.color_0);
+  }
+  if (primitive.attributeValues.texcoord_0 !== undefined) {
+    pointData.setScalars(primitive.attributeValues.texcoord_0);
+  }
+  if (primitive.attributeValues.texcoord_1 !== undefined) {
+    pointData.addArray(primitive.attributeValues.texcoord_1);
+  }
+  if (primitive.attributeValues.joints_0 !== undefined) {
+    pointData.addArray(primitive.attributeValues.joints_0);
+  }
+  if (primitive.attributeValues.weights_0 !== undefined) {
+    pointData.addArray(primitive.attributeValues.weights_0);
+  }
+
+  let targetId = 0;
+  primitive.targets.forEach((target) => {
+    if (target.attributeValues.position !== undefined) {
+      const name = `"target"${targetId}_position`;
+      target.attributeValues.position.setName(name);
+      pointData.addArray(target.attributeValues.position);
+    }
+    if (target.attributeValues.normal !== undefined) {
+      const name = `"target"${targetId}_normal`;
+      target.attributeValues.normal.setName(name);
+      pointData.addArray(target.attributeValues.normal);
+    }
+    if (target.attributeValues.tangent !== undefined) {
+      const name = `"target"${targetId}_tangent`;
+      target.attributeValues.tangent.setName(name);
+      pointData.addArray(target.attributeValues.tangent);
+    }
+    targetId++;
+  });
   return true;
 }
 
