@@ -324,17 +324,23 @@ function buildPolyDataFromPrimitive(primitive) {
   // Positions
   const geometry = vtkPolyData.newInstance();
   primitive.geometry = geometry;
-  if (primitive.attributeValues.position !== undefined) {
+  if (primitive.attributes.POSITION) {
     geometry.setPoints(vtkPoints.newInstance());
     geometry.getPoints().setData(primitive.attributeValues.position.getData());
   }
 
+  const primitiveMode = primitive.mode ?? 4;
   // Connectivity
-  // if (primitive.indices !== undefined) {}
+  if (!primitive.indicesArray) {
+    return true;
+  }
   // does not affect geometry
-  switch (primitive.mode) {
+  switch (primitiveMode) {
     case MeshPrimitiveModes.TRIANGLES:
     case MeshPrimitiveModes.TRIANGLE_FAN:
+      console.log('indices Array start');
+      console.log(primitive.indicesArray);
+      console.log('indices Array end');
       geometry.setPolys(primitive.indicesArray);
       break;
     case MeshPrimitiveModes.LINES:
@@ -433,10 +439,15 @@ function vtkGLTFImporter(publicAPI, model) {
           "Invalid accessor.type value for primitive connectivity loading. Expected 'SCALAR'"
         );
       }
+      console.log('buffer');
       const buffer = model.GLTFData.buffers[bufferView.buffer].dataView;
-      const byteOffset = accessor.byteOffset + bufferView.byteOffset;
+      const byteOffset =
+        (accessor.byteOffset ?? 0) + (bufferView.byteOffset ?? 0);
 
+      console.log(buffer);
+      console.log(byteOffset);
       let byteStride = 0;
+      const primitiveMode = primitive.mode ?? 4;
       switch (accessor.componentType) {
         case AccessorComponentTypes.UNSIGNED_BYTE:
           byteStride = 1;
@@ -446,7 +457,7 @@ function vtkGLTFImporter(publicAPI, model) {
             bufferView.byteStride ?? byteStride,
             accessor.count,
             primitive.cellSize,
-            primitive.mode
+            primitiveMode
           );
           break;
         case AccessorComponentTypes.UNSIGNED_SHORT:
@@ -457,7 +468,7 @@ function vtkGLTFImporter(publicAPI, model) {
             bufferView.byteStride ?? byteStride,
             accessor.count,
             primitive.cellSize,
-            primitive.mode
+            primitiveMode
           );
           break;
         case AccessorComponentTypes.UNSIGNED_INT:
@@ -468,7 +479,7 @@ function vtkGLTFImporter(publicAPI, model) {
             bufferView.byteStride ?? byteStride,
             accessor.count,
             primitive.cellSize,
-            primitive.mode
+            primitiveMode
           );
           break;
         default:
@@ -514,10 +525,22 @@ function vtkGLTFImporter(publicAPI, model) {
     const node = model.GLTFData.nodes[nodeId];
 
     // TODO remove the node.matrix comparison because it should be a default matrix
-    if (node.matrix) node.GlobalTransform = mat4.clone(node.matrix);
+    if (node.matrix) {
+      node.GlobalTransform = mat4.clone(node.matrix);
+    } else {
+      node.GlobalTransform = mat4.create();
+      const rotation = node.rotation ?? [0, 0, 0, 1];
+      const translation = node.translation ?? [0, 0, 0];
+      const scale = node.scale ?? [1, 1, 1];
+      mat4.fromRotationTranslationScale(
+        node.GlobalTransform,
+        rotation,
+        translation,
+        scale
+      );
+    }
 
-    // TODO remove the node.matrix comparison because it should be a default matrix
-    if (parentTransform && node.matrix) {
+    if (parentTransform) {
       mat4.multiply(
         node.GlobalTransform,
         parentTransform,
@@ -551,12 +574,16 @@ function vtkGLTFImporter(publicAPI, model) {
 
     // TODO check if multiple texture coordinates for the same model because it is not supported
 
+    const baseColorFactor = material.pbrMetallicRoughness.baseColorFactor || [
+      1, 1, 1, 1,
+    ];
+
     const property = actor.getProperty();
-    if (material.pbrMetallicRoughness.baseColorFactor.length !== 0) {
-      material.pbrMetallicRoughness.baseColorFactor.pop();
-      property.setColor(material.pbrMetallicRoughness.baseColorFactor);
-      property.setMetallic(material.pbrMetallicRoughness.metallicFactor);
-      property.setRoughness(material.pbrMetallicRoughness.roughnessFactor);
+    if (baseColorFactor.length !== 0) {
+      property.setOpacity(baseColorFactor.pop());
+      property.setColor(baseColorFactor);
+      property.setMetallic(material.pbrMetallicRoughness.metallicFactor || 1);
+      property.setRoughness(material.pbrMetallicRoughness.roughnessFactor || 1);
     }
     if (material.alphaMode === 'OPAQUE') actor.setForceOpaque(true);
   }
@@ -569,7 +596,6 @@ function vtkGLTFImporter(publicAPI, model) {
 
     // TODO: generate tangent if needed and data from primitive to the mapper
     // Probleme it is not support in vtkjs
-
     mapper.setInputData(primitive.geometry);
 
     actor.setMapper(mapper);
@@ -599,10 +625,6 @@ function vtkGLTFImporter(publicAPI, model) {
           if (node.GlobalTransform) {
             actor.setUserMatrix(node.GlobalTransform);
           }
-
-          // TODO remove
-          const clr = { r: 200 / 255.0, g: 200 / 255.0, b: 200 / 255.0 };
-          actor.getProperty().setColor(clr.r, clr.g, clr.b);
 
           model.renderer.addActor(actor);
         });
